@@ -7,6 +7,7 @@ from numba.extending import overload
 
 from pytensor.link.numba.dispatch import basic as numba_basic
 from pytensor.link.numba.dispatch.basic import (
+    _numba_funcify,
     create_arg_string,
     create_tuple_string,
     numba_funcify,
