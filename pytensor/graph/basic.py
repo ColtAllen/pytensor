@@ -1003,6 +1003,7 @@ def condition_subset(
     * One condition
 
     .. code-block::
+
         n - (c) - o
 
     * Two conditions where on depends on another, both returned
@@ -1014,7 +1015,6 @@ def condition_subset(
     * Additional nodes are present
 
     .. code-block::
-
 
            (c) - n - o
         n - (n) -'
@@ -1038,6 +1038,7 @@ def condition_subset(
     .. code-block::
 
         n - (c) - (o/c)
+
     """
     # simple case, no additional conditions
     blockers: Set[Variable] = set()
