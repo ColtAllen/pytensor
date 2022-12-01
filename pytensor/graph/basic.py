@@ -4,7 +4,6 @@ import warnings
 from collections import deque
 from copy import copy
 from itertools import count
-from functools import singledispatch
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -1064,7 +1063,7 @@ def condition_subset(
         if node in conditions:
             # The case where node is in conditions so we check if it depends on others
             # it should be removed from the blockers to check against the rest
-            dependent = is_dependent_on(node, blockers - {node})
+            dependent = variable_is_in_ancestors(node, blockers - {node})
             # conditions that are present in the graph (not disconnected)
             # should be added to conditions_inside
             conditions_inside.add(node)
@@ -1077,7 +1076,7 @@ def condition_subset(
                 candidates.extend(node.owner.inputs)
         else:
             # A regular node to check
-            dependent = is_dependent_on(node, blockers)
+            dependent = variable_is_in_ancestors(node, blockers)
             # all regular nodes fall to blockes
             # 1. it is dependent - further search irrelevant
             # 2. it is independent - the search node is inside the closure
@@ -1767,6 +1766,30 @@ def is_in_ancestors(l_apply: Apply, f_apply: Apply) -> bool:
         else:
             todo.append(cur)
             todo.extend(i.owner for i in cur.inputs if i.owner)
+    return False
+
+
+def variable_is_in_ancestors(
+    node: Variable, check: Union[Variable, Collection[Variable]]
+) -> bool:
+    """Determine if `node` is in the graph given by any in check.
+    Parameters
+    ----------
+    node: Variable
+        Node to check
+    check: Collection[Variable]
+        Nodes to check dependency on
+    Returns
+    -------
+    bool
+    """
+    if not isinstance(check, Collection):
+        check = {check}
+    else:
+        check = set(check)
+    for interim in ancestors([node], check):
+        if interim in check:
+            return True
     return False
 
 

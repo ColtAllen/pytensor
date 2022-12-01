@@ -22,7 +22,7 @@ from pytensor.graph.basic import (
     get_var_by_name,
     graph_inputs,
     io_toposort,
-    is_dependent_on,
+    variable_is_in_ancestors,
     is_in_ancestors,
     list_of_nodes,
     orphans_between,
@@ -810,7 +810,7 @@ def test_NominalVariable_create_variable_type():
     assert ntv_unpkld is ntv
 
 
-def test_is_dependent_on():
+def test_variable_is_in_ancestors():
     x = MyVariable(1)
     x.name = "x"
     y = MyVariable(1)
@@ -820,11 +820,12 @@ def test_is_dependent_on():
     y2 = MyOp(y)
     y2.name = "y2"
     o = MyOp(x2, y)
-    assert is_dependent_on(o, [x])
-    assert is_dependent_on(o, [y])
-    assert not is_dependent_on(o, [y2])
-    assert not is_dependent_on(y, [y2])
-    assert is_dependent_on(y, [y])
+    assert variable_is_in_ancestors(o, x)
+    assert variable_is_in_ancestors(o, [x])
+    assert not variable_is_in_ancestors(o, [y2])
+    assert variable_is_in_ancestors(o, [y2, x])
+    assert not variable_is_in_ancestors(y, [y2])
+    assert variable_is_in_ancestors(y, [y])
 
 
 def test_variable_conditioning():
