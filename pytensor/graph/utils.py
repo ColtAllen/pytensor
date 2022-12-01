@@ -3,6 +3,7 @@ import sys
 import traceback
 from abc import ABCMeta
 from io import StringIO
+from functools import partial
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -14,7 +15,6 @@ from typing import (
     TypeVar,
     Union,
 )
-
 
 if TYPE_CHECKING:
     from pytensor.graph.basic import Apply, Variable
@@ -432,9 +432,25 @@ def toposort(prereqs_d):
     return seq
 
 
-def graph_replace(
+def _graph_replace(
     outputs: Sequence["Variable"], replace: Dict["Variable", "Variable"]
-) -> List["Variable"]:
+) -> Tuple[List["Variable"], Dict["Variable", "Variable"]]:
+    """Replace variables in ``outputs`` by ``replace`` in a single pass.
+
+    Parameters
+    ----------
+    outputs: Sequence[Variable]
+        Output graph
+    replace: Dict[Variable, Variable]
+        Replace mapping
+
+    Returns
+    -------
+    List["Variable"]
+        Output graph with subgraphs replaced
+    Dict["Variable", "Variable"]]
+        Replacements that were not applied
+    """
     from pytensor.graph.basic import condition_subset, Constant
     from pytensor.graph.fg import FunctionGraph
 
@@ -447,13 +463,9 @@ def graph_replace(
     # for the function graph we need the clean graph where
     # inputs do not have owners
     # this is exactly the reason to clone conditions
-    equiv = {c: c.clone() for c in conditions}
+    equiv = {c: c.clone(name=f"i-{c.name}") for c in conditions}
     # some replace keys may dissapear
-    # the reason is they are inside the graph
-    # and depend on some vars in conditions
-    # but we need to keep references to make replacements
-    # we clone the replace keys to get them
-    equiv.update({r: r.clone() for r in replace})
+    # the reason is they are outside the graph
     # clone the graph but preserve the equiv mapping
     fg = FunctionGraph(
         conditions,
@@ -466,16 +478,63 @@ def graph_replace(
     # replace the conditions back
     fg_replace = {equiv[c]: c for c in conditions}
     # add the replacements on top of input mappings
-    fg_replace.update({equiv[r]: v for r, v in replace.items()})
+    fg_replace.update({equiv[r]: v for r, v in replace.items() if r in equiv})
     # replacements have to be done in reverse topological order so that nested
     # expressions get recursively replaced correctly
+
+    # some replacements may be initially outside the graph
+    # but later introduced by a replacement
+    # So far FunctionGraph does these replacements inplace it is thus unsafe
+    # apply them using fg.replace, it may change the original graph
+    non_fg_replace = {r: v for r, v in replace.items() if r not in equiv}
+
     toposort = fg.toposort()
+
+    def toposort_key(fg: FunctionGraph, ts, pair):
+        try:
+            return ts.index(pair[0].owner) if pair[0].owner else -1
+        except ValueError:
+            if pair[0] in fg.variables:
+                return -1
+            else:
+                raise ValueError(f"{pair[0]} is not a part of graph")
+
     sorted_replacements = sorted(
         tuple(fg_replace.items()),
         # sort based on the fg toposort, if a variable has no owner, it goes first
-        key=lambda pair: (toposort.index(pair[0].owner) if pair[0].owner else -1),
+        key=partial(toposort_key, fg, toposort),
         reverse=True,
     )
     fg.replace_all(sorted_replacements, import_missing=True)
+    # return the replacements that were not applied
+    return list(fg.outputs), non_fg_replace
 
-    return list(fg.outputs)
+
+def graph_replace(
+    outputs: Sequence["Variable"], replace: Dict["Variable", "Variable"]
+) -> List["Variable"]:
+    """Replace variables in ``outputs`` by ``replace`` in a single pass.
+
+    Parameters
+    ----------
+    outputs: Sequence[Variable]
+        Output graph
+    replace: Dict[Variable, Variable]
+        Replace mapping
+
+    Returns
+    -------
+    List["Variable"]
+        Output graph with subgraphs replaced
+    """
+    outputs, replace = _graph_replace(outputs, replace)
+    if not replace:
+        return outputs
+    enough = False
+    while not enough:
+        # Some replacements could only be done sequentially
+        # because of introducing new variables
+        outputs, new_replace = _graph_replace(outputs, replace)
+        enough = new_replace == replace
+        replace = new_replace
+    return outputs
