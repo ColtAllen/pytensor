@@ -1,3 +1,5 @@
+import pytest
+
 import pytensor
 from pytensor.graph.utils import graph_replace
 from pytensor.tensor.type import vector
@@ -63,7 +65,11 @@ def test_graph_replace_advanced():
     # the case where new variable is referenced during the replacements
     new_y21 = MyOp("ny2op")(new_y2)
     # the reference new_y2: z2 is not a part of the original graph so the replacement is unsafe
-    oc = graph_replace([o], {x: new_x, new_y2: z2, y2: new_y21})[0]
+    with pytest.raises(ValueError) as err:
+        oc = graph_replace([o], {x: new_x, new_y2: z2, y2: new_y21})
+    assert err.match("Some replacements were not used")
+    oc = graph_replace([o], {x: new_x, y2: new_y21})
+    oc = graph_replace(oc, {new_y2: z2})[0]
     assert oc.owner.inputs[1].owner.inputs[0] is z2
     assert oc.owner.inputs[0].owner.inputs[0] is new_x
     # the old reference is still kept
@@ -80,22 +86,7 @@ def test_graph_replace_advanced():
     # order them messed up so the correct toposort is required
     # and repeat the replacement
 
-    oc = graph_replace([o], {x: new_x, new_y2: z2, z: new_z, y2: new_y21})[0]
-    # new reference appear, old reference vanish
-    # during the development, it was found that the replace implementation is unsafe
-    # the below assert checks the original graph is not modified and overriden
-    assert oc.owner.inputs[1].owner.inputs[0] is not z2
-    assert oc.owner.inputs[1].owner.inputs[0].owner.inputs[0] is new_z
-    # the old reference is still kept
-    assert oc.owner.inputs[0].owner.inputs[0] is new_x
-    assert oc.owner.inputs[0].owner.inputs[1] is w
-    #
-    oc = graph_replace([o], {x: new_x, z: new_z, new_y2: z2, y2: new_y21})[0]
-    # new reference appear
-    assert oc.owner.inputs[1].owner.inputs[0] is not z2
-    assert oc.owner.inputs[1].owner.inputs[0].owner.inputs[0] is new_z
-    # the old reference is still kept
-    assert oc.owner.inputs[0].owner.inputs[0] is new_x
-    assert oc.owner.inputs[0].owner.inputs[1] is w
-    # do not raise if toposort index can't get value
-    oc = graph_replace([o], {MyOp("fake")(x): new_x})[0]
+    fake = MyOp("fake")(x)
+    oc, unused = graph_replace([o], {fake: new_x}, strict=False, return_unused=True)
+    assert oc[0] is o
+    assert fake in unused

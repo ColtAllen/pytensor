@@ -433,9 +433,12 @@ def toposort(prereqs_d):
     return seq
 
 
-def _graph_replace(
-    outputs: Sequence["Variable"], replace: Dict["Variable", "Variable"]
-) -> Tuple[List["Variable"], Dict["Variable", "Variable"]]:
+def graph_replace(
+    outputs: Sequence["Variable"],
+    replace: Dict["Variable", "Variable"],
+    strict=True,
+    return_unused=False,
+) -> Union[Tuple[List["Variable"], Dict["Variable", "Variable"]], List["Variable"]]:
     """Replace variables in ``outputs`` by ``replace`` in a single pass.
 
     Parameters
@@ -444,6 +447,10 @@ def _graph_replace(
         Output graph
     replace: Dict[Variable, Variable]
         Replace mapping
+    strict: bool
+        Raise an error if some replacements were not used
+    return_unused: bool
+        Return replacements that were not used
 
     Returns
     -------
@@ -488,7 +495,8 @@ def _graph_replace(
     # So far FunctionGraph does these replacements inplace it is thus unsafe
     # apply them using fg.replace, it may change the original graph
     non_fg_replace = {r: v for r, v in replace.items() if r not in equiv}
-
+    if strict and non_fg_replace:
+        raise ValueError(f"Some replacements were not used: {non_fg_replace}")
     toposort = fg.toposort()
 
     def toposort_key(fg: FunctionGraph, ts, pair):
@@ -508,34 +516,7 @@ def _graph_replace(
     )
     fg.replace_all(sorted_replacements, import_missing=True)
     # return the replacements that were not applied
-    return list(fg.outputs), non_fg_replace
-
-
-def graph_replace(
-    outputs: Sequence["Variable"], replace: Dict["Variable", "Variable"]
-) -> List["Variable"]:
-    """Replace variables in ``outputs`` by ``replace``.
-
-    Parameters
-    ----------
-    outputs: Sequence[Variable]
-        Output graph
-    replace: Dict[Variable, Variable]
-        Replace mapping
-
-    Returns
-    -------
-    List["Variable"]
-        Output graph with subgraphs replaced
-    """
-    outputs, replace = _graph_replace(outputs, replace)
-    if not replace:
-        return outputs
-    enough = False
-    while not enough:
-        # Some replacements could only be done sequentially
-        # because of introducing new variables
-        outputs, new_replace = _graph_replace(outputs, replace)
-        enough = not new_replace or new_replace == replace
-        replace = new_replace
-    return outputs
+    if return_unused:
+        return list(fg.outputs), non_fg_replace
+    else:
+        return list(fg.outputs)
