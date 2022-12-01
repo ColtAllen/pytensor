@@ -536,6 +536,6 @@ def graph_replace(
         # Some replacements could only be done sequentially
         # because of introducing new variables
         outputs, new_replace = _graph_replace(outputs, replace)
-        enough = new_replace == replace
+        enough = not new_replace or new_replace == replace
         replace = new_replace
     return outputs
