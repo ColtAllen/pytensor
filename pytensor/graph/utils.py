@@ -492,9 +492,9 @@ def _graph_replace(
     toposort = fg.toposort()
 
     def toposort_key(fg: FunctionGraph, ts, pair):
-        try:
-            return ts.index(pair[0].owner) if pair[0].owner else -1
-        except ValueError:
+        if pair[0].owner is not None:
+            return ts.index(pair[0].owner)
+        else:
             if pair[0] in fg.variables:
                 return -1
             else:
