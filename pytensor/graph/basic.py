@@ -4,6 +4,7 @@ import warnings
 from collections import deque
 from copy import copy
 from itertools import count
+from functools import singledispatch
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -968,6 +969,129 @@ def applys_between(
     yield from (
         r.owner for r in vars_between(ins, outs) if r not in ins and r.owner is not None
     )
+
+
+def condition_subset(
+    outputs: Sequence[Variable], conditions: Optional[Collection[Variable]] = None
+) -> List[Variable]:
+    """Get the conditional subset for outputs.
+
+
+    Conditional subset is a minimal set of variables required to compute outputs.
+
+    Parameters
+    ----------
+    outputs : Collection[Variable]
+        Variable to get conditions for
+    conditions : Optional[Collection[Variable]]
+        Additional conditions to assume, by default None
+
+    Returns
+    -------
+    List[Variable]
+        Variables required to compute ``outputs``
+
+    Examples
+    --------
+    The returned nodes marked in (parenthesis), condition nodes are ``c``, output nodes are ``o``
+
+    * No conditions
+
+    .. code-block::
+
+        n - n - (o)
+
+    * One condition
+
+    .. code-block::
+        n - (c) - o
+
+    * Two conditions where on depends on another, both returned
+
+    .. code-block::
+
+        (c) - (c) - o
+
+    * Additional nodes are present
+
+    .. code-block::
+
+
+           (c) - n - o
+        n - (n) -'
+
+    * Disconnected condition not returned
+
+    .. code-block::
+
+        (c) - n - o
+         c
+
+    * Disconnected output is present and returned
+
+    .. code-block::
+
+        (c) - (c) - o
+        (o)
+
+    * Condition on itself adds itself
+
+    .. code-block::
+
+        n - (c) - (o/c)
+    """
+    # simple case, no additional conditions
+    blockers = set()
+    # blockers have known independent nodes and pre-conditions
+    candidates = list(outputs)
+    if not conditions:  # None or empty
+        # just filter out unique variables
+        blockers.update(candidates)
+        # no more actions are needed
+        return blockers
+    blockers.update(conditions)
+    # enforce O(1) check for node in conditions
+    conditions = blockers.copy()
+    # track conditions that are inside the graph to remove disconnected later
+    # preserve order for return
+    conditions_inside = OrderedSet()
+    independent_nodes = OrderedSet()
+    while candidates:
+        # on any new candidate
+        node = candidates.pop()
+        # check if the node is independent, never go above blockers
+        # blockers are independent nodes and pre-conditions
+        if node in conditions:
+            # The case where node is in conditions so we check if it depends on others
+            # it should be removed from the blockers to check against the rest
+            dependent = is_dependent_on(node, blockers - {node})
+            # conditions that are present in the graph (not disconnected)
+            # should be added to conditions_inside
+            conditions_inside.add(node)
+            if dependent:
+                # if the condition is still dependent we need to go above,
+                # the search is not yet finished
+                # the node _has_ to have owner to be dependent
+                # so we do not check it
+                # and populate search to go above
+                candidates.extend(node.owner.inputs)
+        else:
+            # A regular node to check
+            dependent = is_dependent_on(node, blockers)
+            # all regular nodes fall to blockes
+            # 1. it is dependent - further search irrelevant
+            # 2. it is independent - the search node is inside the closure
+            blockers.add(node)
+            # if we've found an independent node and it is not in blockers so far
+            # it is a new indepenent node not present in conditions
+            if not dependent:
+                # we've found an independent node
+                # do not search beyound
+                independent_nodes.add(node)
+            else:
+                # populate search otherwise
+                candidates.extend(node.owner.inputs)
+    return list(conditions_inside | independent_nodes)
 
 
 def clone(

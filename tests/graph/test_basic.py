@@ -16,11 +16,13 @@ from pytensor.graph.basic import (
     clone,
     clone_get_equiv,
     clone_replace,
+    condition_subset,
     equal_computations,
     general_toposort,
     get_var_by_name,
     graph_inputs,
     io_toposort,
+    is_dependent_on,
     is_in_ancestors,
     list_of_nodes,
     orphans_between,
@@ -806,3 +808,74 @@ def test_NominalVariable_create_variable_type():
     assert type(ntv_unpkld) is type(ntv)
     assert ntv_unpkld.equals(ntv)
     assert ntv_unpkld is ntv
+
+
+def test_is_dependent_on():
+    x = MyVariable(1)
+    x.name = "x"
+    y = MyVariable(1)
+    y.name = "y"
+    x2 = MyOp(x)
+    x2.name = "x2"
+    y2 = MyOp(y)
+    y2.name = "y2"
+    o = MyOp(x2, y)
+    assert is_dependent_on(o, [x])
+    assert is_dependent_on(o, [y])
+    assert not is_dependent_on(o, [y2])
+    assert not is_dependent_on(y, [y2])
+    assert is_dependent_on(y, [y])
+
+
+def test_variable_conditioning():
+    """
+    * No conditions
+        n - n - (o)
+
+    * One condition
+        n - (c) - o
+
+    * Two conditions where on depends on another, both returned
+        (c) - (c) - o
+
+    * Additional nodes are present
+           (c) - n - o
+        n - (n) -'
+
+    * Disconnected condition not returned
+        (c) - n - o
+         c
+
+    * Disconnected output is present and returned
+        (c) - (c) - o
+        (o)
+
+    * Condition on itself adds itself
+        n - (c) - (o/c)
+    """
+    x = MyVariable(1)
+    x.name = "x"
+    y = MyVariable(1)
+    y.name = "y"
+    z = MyVariable(1)
+    z.name = "z"
+    x2 = MyOp(x)
+    x2.name = "x2"
+    y2 = MyOp(y, x2)
+    y2.name = "y2"
+    o = MyOp(y2)
+    o2 = MyOp(o)
+    # No conditions
+    assert condition_subset([o]) == [o]
+    # One condition
+    assert condition_subset([o2], [y2]) == [y2]
+    # Condition on itself adds itself
+    assert condition_subset([o], [y2, o]) == [o, y2]
+    # Two conditions where on depends on another, both returned
+    assert condition_subset([o2], [y2, o]) == [o, y2]
+    # Additional nodes are present
+    assert condition_subset([o], [y]) == [y, x2]
+    # Disconnected condition
+    assert condition_subset([o2], [y2, z]) == [y2]
+    # Disconnected output is present
+    assert condition_subset([o2, z], [y2]) == [y2, z]
