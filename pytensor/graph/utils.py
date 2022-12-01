@@ -514,7 +514,7 @@ def _graph_replace(
 def graph_replace(
     outputs: Sequence["Variable"], replace: Dict["Variable", "Variable"]
 ) -> List["Variable"]:
-    """Replace variables in ``outputs`` by ``replace`` in a single pass.
+    """Replace variables in ``outputs`` by ``replace``.
 
     Parameters
     ----------
