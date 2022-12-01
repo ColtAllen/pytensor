@@ -464,7 +464,7 @@ def _graph_replace(
     # for the function graph we need the clean graph where
     # inputs do not have owners
     # this is exactly the reason to clone conditions
-    equiv = {c: c.clone(name=f"i-{c.name}") for c in conditions}
+    equiv = {c: c.clone(name=f"i-{i}") for c, i in enumerate(conditions)}
     # some replace keys may dissapear
     # the reason is they are outside the graph
     # clone the graph but preserve the equiv mapping
