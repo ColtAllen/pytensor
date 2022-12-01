@@ -3,7 +3,17 @@ import sys
 import traceback
 from abc import ABCMeta
 from io import StringIO
-from typing import TYPE_CHECKING, Any, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 
 if TYPE_CHECKING:
@@ -420,3 +430,52 @@ def toposort(prereqs_d):
             "some orderings contain invalid elements."
         )
     return seq
+
+
+def graph_replace(
+    outputs: Sequence["Variable"], replace: Dict["Variable", "Variable"]
+) -> List["Variable"]:
+    from pytensor.graph.basic import condition_subset, Constant
+    from pytensor.graph.fg import FunctionGraph
+
+    # collect minimum graph inputs which is required to compute outputs
+    # and depend on replacements
+    # additionally remove constants, they do not matter in clone get equiv
+    conditions = [
+        c for c in condition_subset(outputs, replace) if not isinstance(c, Constant)
+    ]
+    # for the function graph we need the clean graph where
+    # inputs do not have owners
+    # this is exactly the reason to clone conditions
+    equiv = {c: c.clone() for c in conditions}
+    # some replace keys may dissapear
+    # the reason is they are inside the graph
+    # and depend on some vars in conditions
+    # but we need to keep references to make replacements
+    # we clone the replace keys to get them
+    equiv.update({r: r.clone() for r in replace})
+    # clone the graph but preserve the equiv mapping
+    fg = FunctionGraph(
+        conditions,
+        outputs,
+        # clone_get_equiv kwargs
+        copy_orphans=False,
+        copy_inputs=False,
+        memo=equiv,
+    )
+    # replace the conditions back
+    fg_replace = {equiv[c]: c for c in conditions}
+    # add the replacements on top of input mappings
+    fg_replace.update({equiv[r]: v for r, v in replace.items()})
+    # replacements have to be done in reverse topological order so that nested
+    # expressions get recursively replaced correctly
+    toposort = fg.toposort()
+    sorted_replacements = sorted(
+        tuple(fg_replace.items()),
+        # sort based on the fg toposort, if a variable has no owner, it goes first
+        key=lambda pair: (toposort.index(pair[0].owner) if pair[0].owner else -1),
+        reverse=True,
+    )
+    fg.replace_all(sorted_replacements, import_missing=True)
+
+    return list(fg.outputs)
