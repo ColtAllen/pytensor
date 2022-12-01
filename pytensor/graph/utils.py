@@ -2,8 +2,8 @@ import linecache
 import sys
 import traceback
 from abc import ABCMeta
-from io import StringIO
 from functools import partial
+from io import StringIO
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -15,6 +15,7 @@ from typing import (
     TypeVar,
     Union,
 )
+
 
 if TYPE_CHECKING:
     from pytensor.graph.basic import Apply, Variable
@@ -451,7 +452,7 @@ def _graph_replace(
     Dict["Variable", "Variable"]]
         Replacements that were not applied
     """
-    from pytensor.graph.basic import condition_subset, Constant
+    from pytensor.graph.basic import Constant, condition_subset
     from pytensor.graph.fg import FunctionGraph
 
     # collect minimum graph inputs which is required to compute outputs

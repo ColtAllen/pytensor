@@ -1040,21 +1040,22 @@ def condition_subset(
         n - (c) - (o/c)
     """
     # simple case, no additional conditions
-    blockers = set()
+    blockers: Set[Variable] = set()
+    independent_nodes = OrderedSet()
     # blockers have known independent nodes and pre-conditions
     candidates = list(outputs)
     if not conditions:  # None or empty
         # just filter out unique variables
-        blockers.update(candidates)
+        independent_nodes.update(candidates)
         # no more actions are needed
-        return blockers
+        return list(independent_nodes)
     blockers.update(conditions)
     # enforce O(1) check for node in conditions
     conditions = blockers.copy()
     # track conditions that are inside the graph to remove disconnected later
     # preserve order for return
     conditions_inside = OrderedSet()
-    independent_nodes = OrderedSet()
+
     while candidates:
         # on any new candidate
         node = candidates.pop()

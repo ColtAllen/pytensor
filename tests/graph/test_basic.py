@@ -22,10 +22,10 @@ from pytensor.graph.basic import (
     get_var_by_name,
     graph_inputs,
     io_toposort,
-    variable_is_in_ancestors,
     is_in_ancestors,
     list_of_nodes,
     orphans_between,
+    variable_is_in_ancestors,
     vars_between,
     walk,
 )
@@ -828,7 +828,7 @@ def test_variable_is_in_ancestors():
     assert variable_is_in_ancestors(y, [y])
 
 
-def test_variable_conditioning():
+def test_condition_subset():
     """
     * No conditions
         n - n - (o)

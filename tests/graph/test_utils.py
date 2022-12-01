@@ -1,4 +1,3 @@
-import pytest
 import pytensor
 from pytensor.graph.utils import graph_replace
 from pytensor.tensor.type import vector
@@ -22,7 +21,7 @@ def test_graph_replace():
     y = MyVariable("y")
     z = MyVariable("z")
     w = MyVariable("w")
-    z2 = MyOp("zop")(z)
+    MyOp("zop")(z)
     x2 = MyOp("xop")(x, w)
     x2.name = "x2"
     y2 = MyOp("yop")(y)
