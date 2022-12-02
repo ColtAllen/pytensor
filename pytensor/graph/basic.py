@@ -1042,20 +1042,23 @@ def condition_subset(
     """
     # simple case, no additional conditions
     blockers: Set[Variable] = set()
-    independent_nodes = OrderedSet()
+    independent_nodes = list()
     # blockers have known independent nodes and pre-conditions
     candidates = list(outputs)
     if not conditions:  # None or empty
         # just filter out unique variables
-        independent_nodes.update(candidates)
+        for node in candidates:
+            if node not in blockers:
+                independent_nodes.append(node)
+                blockers.add(node)
         # no more actions are needed
-        return list(independent_nodes)
+        return independent_nodes
     blockers.update(conditions)
     # enforce O(1) check for node in conditions
     conditions = blockers.copy()
     # track conditions that are inside the graph to remove disconnected later
     # preserve order for return
-    conditions_inside = OrderedSet()
+    conditions_inside = list()
 
     while candidates:
         # on any new candidate
@@ -1068,7 +1071,7 @@ def condition_subset(
             dependent = variable_is_in_ancestors(node, blockers - {node})
             # conditions that are present in the graph (not disconnected)
             # should be added to conditions_inside
-            conditions_inside.add(node)
+            conditions_inside.append(node)
             if dependent:
                 # if the condition is still dependent we need to go above,
                 # the search is not yet finished
@@ -1088,11 +1091,11 @@ def condition_subset(
             if not dependent:
                 # we've found an independent node
                 # do not search beyound
-                independent_nodes.add(node)
+                independent_nodes.append(node)
             else:
                 # populate search otherwise
                 candidates.extend(node.owner.inputs)
-    return list(conditions_inside | independent_nodes)
+    return conditions_inside + independent_nodes
 
 
 def clone(
