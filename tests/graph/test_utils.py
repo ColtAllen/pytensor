@@ -93,6 +93,5 @@ def test_graph_replace_advanced():
     # and repeat the replacement
 
     fake = MyOp("fake")(x)
-    oc, unused = graph_replace([o], {fake: new_x}, strict=False, return_unused=True)
+    oc = graph_replace([o], {fake: new_x}, strict=False)
     assert oc[0] is o
-    assert fake in unused

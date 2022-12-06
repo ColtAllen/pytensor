@@ -438,8 +438,7 @@ def graph_replace(
     replace: Dict["Variable", "Variable"],
     *,
     strict=True,
-    return_unused=False,
-) -> Union[Tuple[List["Variable"], Dict["Variable", "Variable"]], List["Variable"]]:
+) -> List["Variable"]:
     """Replace variables in ``outputs`` by ``replace``.
 
     Parameters
@@ -518,8 +517,4 @@ def graph_replace(
         reverse=True,
     )
     fg.replace_all(sorted_replacements, import_missing=True)
-    # return the replacements that were not applied
-    if return_unused:
-        return list(fg.outputs), non_fg_replace
-    else:
-        return list(fg.outputs)
+    return list(fg.outputs)
