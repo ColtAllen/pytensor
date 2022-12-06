@@ -1066,7 +1066,7 @@ def truncated_graph_inputs(
         if node in conditions:
             # The case where node is in conditions so we check if it depends on others
             # it should be removed from the blockers to check against the rest
-            dependent = variable_is_in_ancestors(node, blockers - {node})
+            dependent = variable_in_ancestors(node, blockers - {node})
             # conditions that are present in the graph (not disconnected)
             # should be added to conditions_inside
             conditions_inside.append(node)
@@ -1080,7 +1080,7 @@ def truncated_graph_inputs(
                 candidates.extend(node.owner.inputs)
         else:
             # A regular node to check
-            dependent = variable_is_in_ancestors(node, blockers)
+            dependent = variable_in_ancestors(node, blockers)
             # all regular nodes fall to blockes
             # 1. it is dependent - further search irrelevant
             # 2. it is independent - the search node is inside the closure
@@ -1743,15 +1743,17 @@ def list_of_nodes(
     )
 
 
-def is_in_ancestors(l_apply: Apply, f_apply: Apply) -> bool:
-    """Determine if `f_apply` is in the graph given by `l_apply`.
+def apply_in_ancestors(
+    apply: Apply, ancestors_of: Union[Apply, Collection[Apply]]
+) -> bool:
+    """Determine if `f_apply` is in the graph given by `ancestors_of`.
 
     Parameters
     ----------
-    l_apply : Apply
-        The node to walk.
-    f_apply : Apply
-        The node to find in `l_apply`.
+    apply : Apply
+        The Apply node to walk.
+    ancestors_of : Union[Apply, Collection[Apply]]
+        Apply nodes to check dependency on
 
     Returns
     -------
@@ -1759,14 +1761,18 @@ def is_in_ancestors(l_apply: Apply, f_apply: Apply) -> bool:
 
     """
     computed = set()
-    todo = [l_apply]
+    todo = [apply]
+    if not isinstance(ancestors_of, Collection):
+        ancestors_of = {ancestors_of}
+    else:
+        ancestors_of = set(ancestors_of)
     while todo:
         cur = todo.pop()
         if cur.outputs[0] in computed:
             continue
         if all(i in computed or i.owner is None for i in cur.inputs):
             computed.update(cur.outputs)
-            if cur is f_apply:
+            if cur in ancestors_of:
                 return True
         else:
             todo.append(cur)
@@ -1774,8 +1780,8 @@ def is_in_ancestors(l_apply: Apply, f_apply: Apply) -> bool:
     return False
 
 
-def variable_is_in_ancestors(
-    node: Variable, check: Union[Variable, Collection[Variable]]
+def variable_in_ancestors(
+    node: Variable, ancestors_of: Union[Variable, Collection[Variable]]
 ) -> bool:
     """Determine if `node` is in the graph given by any in check.
     Parameters
@@ -1784,15 +1790,16 @@ def variable_is_in_ancestors(
         Node to check
     check: Collection[Variable]
         Nodes to check dependency on
+
     Returns
     -------
     bool
     """
-    if not isinstance(check, Collection):
-        check = {check}
+    if not isinstance(ancestors_of, Collection):
+        ancestors_of = {ancestors_of}
     else:
-        check = set(check)
-    return any(interim in check for interim in ancestors([node], blockers=check))
+        ancestors_of = set(ancestors_of)
+    return any(interim in ancestors_of for interim in ancestors([node]))
 
 
 def equal_computations(

@@ -21,11 +21,11 @@ from pytensor.graph.basic import (
     get_var_by_name,
     graph_inputs,
     io_toposort,
-    is_in_ancestors,
+    apply_in_ancestors,
     list_of_nodes,
     orphans_between,
     truncated_graph_inputs,
-    variable_is_in_ancestors,
+    variable_in_ancestors,
     vars_between,
     walk,
 )
@@ -503,15 +503,20 @@ def test_list_of_nodes():
     assert res == [o2.owner, o1.owner]
 
 
-def test_is_in_ancestors():
+def test_apply_in_ancestors():
 
     r1, r2, r3 = MyVariable(1), MyVariable(2), MyVariable(3)
     o1 = MyOp(r1, r2)
     o1.name = "o1"
-    o2 = MyOp(r3, o1)
+    o2 = MyOp(r1, o1)
     o2.name = "o2"
+    o3 = MyOp(r3, o1, o2)
+    o3.name = "o3"
 
-    assert is_in_ancestors(o2.owner, o1.owner)
+    assert apply_in_ancestors(o2.owner, o1.owner)
+    assert apply_in_ancestors(o2.owner, o2.owner)
+    assert apply_in_ancestors(o3.owner, [o1.owner, o2.owner])
+    
 
 
 @pytest.mark.xfail(reason="Not implemented")
@@ -820,12 +825,12 @@ def test_variable_is_in_ancestors():
     y2 = MyOp(y)
     y2.name = "y2"
     o = MyOp(x2, y)
-    assert variable_is_in_ancestors(o, x)
-    assert variable_is_in_ancestors(o, [x])
-    assert not variable_is_in_ancestors(o, [y2])
-    assert variable_is_in_ancestors(o, [y2, x])
-    assert not variable_is_in_ancestors(y, [y2])
-    assert variable_is_in_ancestors(y, [y])
+    assert variable_in_ancestors(o, x)
+    assert variable_in_ancestors(o, [x])
+    assert not variable_in_ancestors(o, [y2])
+    assert variable_in_ancestors(o, [y2, x])
+    assert not variable_in_ancestors(y, [y2])
+    assert variable_in_ancestors(y, [y])
 
 
 def test_truncated_graph_inputs():
