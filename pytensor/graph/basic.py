@@ -971,7 +971,8 @@ def applys_between(
 
 
 def truncated_graph_inputs(
-    outputs: Sequence[Variable], conditions: Optional[Collection[Variable]] = None
+    outputs: Sequence[Variable],
+    ancestors_to_include: Optional[Collection[Variable]] = None,
 ) -> List[Variable]:
     """Get the conditional subset for outputs.
 
@@ -982,8 +983,8 @@ def truncated_graph_inputs(
     ----------
     outputs : Collection[Variable]
         Variable to get conditions for
-    conditions : Optional[Collection[Variable]]
-        Additional conditions to assume, by default None
+    ancestors_to_include : Optional[Collection[Variable]]
+        Additional ancestors to assume, by default None
 
     Returns
     -------
@@ -992,21 +993,21 @@ def truncated_graph_inputs(
 
     Examples
     --------
-    The returned nodes marked in (parenthesis), condition nodes are ``c``, output nodes are ``o``
+    The returned nodes marked in (parenthesis), ancestors nodes are ``c``, output nodes are ``o``
 
-    * No conditions
+    * No ancestors to include
 
     .. code-block::
 
         n - n - (o)
 
-    * One condition
+    * One ancestors to include
 
     .. code-block::
 
         n - (c) - o
 
-    * Two conditions where on depends on another, both returned
+    * Two ancestors to include where on depends on another, both returned
 
     .. code-block::
 
@@ -1019,7 +1020,7 @@ def truncated_graph_inputs(
            (c) - n - o
         n - (n) -'
 
-    * Disconnected condition not returned
+    * Disconnected ancestors to include not returned
 
     .. code-block::
 
@@ -1033,45 +1034,42 @@ def truncated_graph_inputs(
         (c) - (c) - o
         (o)
 
-    * Condition on itself adds itself
+    * ancestors to include that include itself adds itself
 
     .. code-block::
 
         n - (c) - (o/c)
 
     """
-    # simple case, no additional conditions
-    independent_nodes = list()
-    # blockers have known independent nodes and pre-conditions
+    # simple case, no additional ancestors to include
+    truncated_inputs = list()
+    # blockers have known independent nodes and ancestors to include
     candidates = list(outputs)
-    if not conditions:  # None or empty
+    if not ancestors_to_include:  # None or empty
         # just filter out unique variables
         for node in candidates:
-            if node not in independent_nodes:
-                independent_nodes.append(node)
+            if node not in truncated_inputs:
+                truncated_inputs.append(node)
         # no more actions are needed
-        return independent_nodes
-    blockers: Set[Variable] = set(conditions)
-    # enforce O(1) check for node in conditions
-    conditions = blockers.copy()
-    # track conditions that are inside the graph to remove disconnected later
-    # preserve order for return
-    conditions_inside = list()
+        return truncated_inputs
+    blockers: Set[Variable] = set(ancestors_to_include)
+    # enforce O(1) check for node in ancestors to include
+    ancestors_to_include = blockers.copy()
 
     while candidates:
         # on any new candidate
         node = candidates.pop()
         # check if the node is independent, never go above blockers
-        # blockers are independent nodes and pre-conditions
-        if node in conditions:
-            # The case where node is in conditions so we check if it depends on others
+        # blockers are independent nodes and ancestors to include
+        if node in ancestors_to_include:
+            # The case where node is in ancestors to include so we check if it depends on others
             # it should be removed from the blockers to check against the rest
             dependent = variable_in_ancestors(node, blockers - {node})
-            # conditions that are present in the graph (not disconnected)
-            # should be added to conditions_inside
-            conditions_inside.append(node)
+            # ancestors to include that are present in the graph (not disconnected)
+            # should be added to truncated_inputs
+            truncated_inputs.append(node)
             if dependent:
-                # if the condition is still dependent we need to go above,
+                # if the ancestors to include is still dependent we need to go above,
                 # the search is not yet finished
                 # the node _has_ to have owner to be dependent
                 # so we do not check it
@@ -1086,16 +1084,16 @@ def truncated_graph_inputs(
             # 2. it is independent - the search node is inside the closure
             blockers.add(node)
             # if we've found an independent node and it is not in blockers so far
-            # it is a new indepenent node not present in conditions
+            # it is a new indepenent node not present in ancestors to include
             if not dependent:
                 # we've found an independent node
                 # do not search beyound
-                independent_nodes.append(node)
+                truncated_inputs.append(node)
             else:
                 # populate search otherwise
                 # owner can never be None for a dependent node
                 candidates.extend(node.owner.inputs)
-    return conditions_inside + independent_nodes
+    return truncated_inputs
 
 
 def clone(

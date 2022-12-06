@@ -516,7 +516,6 @@ def test_apply_in_ancestors():
     assert apply_in_ancestors(o2.owner, o1.owner)
     assert apply_in_ancestors(o2.owner, o2.owner)
     assert apply_in_ancestors(o3.owner, [o1.owner, o2.owner])
-    
 
 
 @pytest.mark.xfail(reason="Not implemented")
@@ -880,8 +879,8 @@ def test_truncated_graph_inputs():
     # Two conditions where on depends on another, both returned
     assert truncated_graph_inputs([o2], [y2, o]) == [o, y2]
     # Additional nodes are present
-    assert truncated_graph_inputs([o], [y]) == [y, x2]
+    assert truncated_graph_inputs([o], [y]) == [x2, y]
     # Disconnected condition
     assert truncated_graph_inputs([o2], [y2, z]) == [y2]
     # Disconnected output is present
-    assert truncated_graph_inputs([o2, z], [y2]) == [y2, z]
+    assert truncated_graph_inputs([o2, z], [y2]) == [z, y2]
