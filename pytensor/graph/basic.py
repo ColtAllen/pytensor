@@ -1792,10 +1792,7 @@ def variable_is_in_ancestors(
         check = {check}
     else:
         check = set(check)
-    for interim in ancestors([node], check):
-        if interim in check:
-            return True
-    return False
+    return any(interim in check for interim in ancestors([node], blockers=check))
 
 
 def equal_computations(
