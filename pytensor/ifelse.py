@@ -20,7 +20,7 @@ import pytensor.tensor as at
 from pytensor import as_symbolic
 from pytensor.compile import optdb
 from pytensor.configdefaults import config
-from pytensor.graph.basic import Apply, Variable, clone_replace, apply_in_ancestors
+from pytensor.graph.basic import Apply, Variable, apply_in_ancestors, clone_replace
 from pytensor.graph.op import _NoPythonOp
 from pytensor.graph.rewriting.basic import GraphRewriter, in2out, node_rewriter
 from pytensor.graph.type import HasDataType, HasShape

@@ -18,11 +18,11 @@ from pytensor.graph.basic import (
     Apply,
     Constant,
     Variable,
+    apply_in_ancestors,
     clone_replace,
     equal_computations,
     graph_inputs,
     io_toposort,
-    apply_in_ancestors,
 )
 from pytensor.graph.destroyhandler import DestroyHandler
 from pytensor.graph.features import ReplaceValidate

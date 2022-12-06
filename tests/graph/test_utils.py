@@ -34,6 +34,12 @@ def test_graph_replace():
     # the old reference is kept
     assert yc.owner.inputs[1] is w
 
+    # test replace itself
+    yc = graph_replace([x2], {x2: y2})[0]
+    assert yc is y2
+    assert yc.owner.inputs[0] is y
+    assert len(yc.owner.inputs) == 1
+
     # the case where inputs have to be replaced in reverse topological order
     o = MyOp("xyop")(x2, y2)
     new_x = x.clone(name="x_new")
