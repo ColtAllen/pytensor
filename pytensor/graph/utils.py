@@ -436,6 +436,7 @@ def toposort(prereqs_d):
 def graph_replace(
     outputs: Sequence["Variable"],
     replace: Dict["Variable", "Variable"],
+    *,
     strict=True,
     return_unused=False,
 ) -> Union[Tuple[List["Variable"], Dict["Variable", "Variable"]], List["Variable"]]:
