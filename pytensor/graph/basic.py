@@ -970,7 +970,7 @@ def applys_between(
     )
 
 
-def condition_subset(
+def truncated_graph_inputs(
     outputs: Sequence[Variable], conditions: Optional[Collection[Variable]] = None
 ) -> List[Variable]:
     """Get the conditional subset for outputs.
@@ -1078,6 +1078,7 @@ def condition_subset(
                 # the node _has_ to have owner to be dependent
                 # so we do not check it
                 # and populate search to go above
+                # owner can never be None for a dependent node
                 candidates.extend(node.owner.inputs)
         else:
             # A regular node to check
@@ -1094,6 +1095,7 @@ def condition_subset(
                 independent_nodes.append(node)
             else:
                 # populate search otherwise
+                # owner can never be None for a dependent node
                 candidates.extend(node.owner.inputs)
     return conditions_inside + independent_nodes
 

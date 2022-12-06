@@ -16,7 +16,6 @@ from pytensor.graph.basic import (
     clone,
     clone_get_equiv,
     clone_replace,
-    condition_subset,
     equal_computations,
     general_toposort,
     get_var_by_name,
@@ -25,6 +24,7 @@ from pytensor.graph.basic import (
     is_in_ancestors,
     list_of_nodes,
     orphans_between,
+    truncated_graph_inputs,
     variable_is_in_ancestors,
     vars_between,
     walk,
@@ -828,7 +828,7 @@ def test_variable_is_in_ancestors():
     assert variable_is_in_ancestors(y, [y])
 
 
-def test_condition_subset():
+def test_truncated_graph_inputs():
     """
     * No conditions
         n - n - (o)
@@ -867,16 +867,16 @@ def test_condition_subset():
     o = MyOp(y2)
     o2 = MyOp(o)
     # No conditions
-    assert condition_subset([o]) == [o]
+    assert truncated_graph_inputs([o]) == [o]
     # One condition
-    assert condition_subset([o2], [y2]) == [y2]
+    assert truncated_graph_inputs([o2], [y2]) == [y2]
     # Condition on itself adds itself
-    assert condition_subset([o], [y2, o]) == [o, y2]
+    assert truncated_graph_inputs([o], [y2, o]) == [o, y2]
     # Two conditions where on depends on another, both returned
-    assert condition_subset([o2], [y2, o]) == [o, y2]
+    assert truncated_graph_inputs([o2], [y2, o]) == [o, y2]
     # Additional nodes are present
-    assert condition_subset([o], [y]) == [y, x2]
+    assert truncated_graph_inputs([o], [y]) == [y, x2]
     # Disconnected condition
-    assert condition_subset([o2], [y2, z]) == [y2]
+    assert truncated_graph_inputs([o2], [y2, z]) == [y2]
     # Disconnected output is present
-    assert condition_subset([o2, z], [y2]) == [y2, z]
+    assert truncated_graph_inputs([o2, z], [y2]) == [y2, z]

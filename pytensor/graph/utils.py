@@ -459,14 +459,16 @@ def graph_replace(
     Dict["Variable", "Variable"]
         Replacements that were not applied
     """
-    from pytensor.graph.basic import Constant, condition_subset
+    from pytensor.graph.basic import Constant, truncated_graph_inputs
     from pytensor.graph.fg import FunctionGraph
 
     # collect minimum graph inputs which is required to compute outputs
     # and depend on replacements
     # additionally remove constants, they do not matter in clone get equiv
     conditions = [
-        c for c in condition_subset(outputs, replace) if not isinstance(c, Constant)
+        c
+        for c in truncated_graph_inputs(outputs, replace)
+        if not isinstance(c, Constant)
     ]
     # for the function graph we need the clean graph where
     # inputs do not have owners
