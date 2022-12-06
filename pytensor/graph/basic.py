@@ -1041,19 +1041,17 @@ def truncated_graph_inputs(
 
     """
     # simple case, no additional conditions
-    blockers: Set[Variable] = set()
     independent_nodes = list()
     # blockers have known independent nodes and pre-conditions
     candidates = list(outputs)
     if not conditions:  # None or empty
         # just filter out unique variables
         for node in candidates:
-            if node not in blockers:
+            if node not in independent_nodes:
                 independent_nodes.append(node)
-                blockers.add(node)
         # no more actions are needed
         return independent_nodes
-    blockers.update(conditions)
+    blockers: Set[Variable] = set(conditions)
     # enforce O(1) check for node in conditions
     conditions = blockers.copy()
     # track conditions that are inside the graph to remove disconnected later
