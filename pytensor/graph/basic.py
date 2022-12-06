@@ -1087,7 +1087,7 @@ def truncated_graph_inputs(
             # it is a new indepenent node not present in ancestors to include
             if not dependent:
                 # we've found an independent node
-                # do not search beyound
+                # do not search beyond
                 truncated_inputs.append(node)
             else:
                 # populate search otherwise
