@@ -52,6 +52,7 @@ core
 pytensor-venv/
 /notebooks/Sandbox*
 .vscode/
+.cursor/rules/
 testing-report.html
 coverage.xml
 .coverage.*
